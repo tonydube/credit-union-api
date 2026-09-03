@@ -1,0 +1,6 @@
+@credit_union_api_HostAddress = http://localhost:5296
+
+GET {{credit_union_api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
