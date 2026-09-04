@@ -81,4 +81,41 @@ app.MapGet("/api/v1/members/{id}/accounts/{accountId}", (string id, string accou
     return account is null ? Results.NotFound() : Results.Ok(account);
 }).RequireAuthorization();
 
+// GET /api/v1/members/{id}/accounts/{accountId}/transactions
+app.MapGet("/api/v1/members/{id}/accounts/{accountId}/transactions", (string id, string accountId, ClaimsPrincipal user, int page = 1, int pageSize = 10) =>
+{
+    var memberId = user.FindFirst("memberId")?.Value;
+    if (memberId != id) return Results.Forbid();
+
+    var account = SeedData.Accounts.FirstOrDefault(a => a.Id == accountId && a.MemberId == id);
+    if (account is null) return Results.NotFound();
+
+    var transactions = SeedData.Transactions
+        .Where(t => t.AccountId == accountId)
+        .OrderByDescending(t => t.Date)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
+
+    return Results.Ok(new { page, pageSize, total = transactions.Count, transactions });
+}).RequireAuthorization();
+
+// POST /api/v1/members/{id}/accounts/{accountId}/transfer
+app.MapPost("/api/v1/members/{id}/accounts/{accountId}/transfer", (string id, string accountId, TransferRequest req, ClaimsPrincipal user) =>
+{
+    var memberId = user.FindFirst("memberId")?.Value;
+    if (memberId != id) return Results.Forbid();
+
+    var fromAccount = SeedData.Accounts.FirstOrDefault(a => a.Id == req.FromAccountId && a.MemberId == id);
+    var toAccount = SeedData.Accounts.FirstOrDefault(a => a.Id == req.ToAccountId && a.MemberId == id);
+
+    if (fromAccount is null || toAccount is null) return Results.NotFound();
+    if (fromAccount.Balance < req.Amount) return Results.BadRequest("Insufficient funds.");
+
+    SeedData.Accounts[SeedData.Accounts.IndexOf(fromAccount)] = fromAccount with { Balance = fromAccount.Balance - req.Amount };
+    SeedData.Accounts[SeedData.Accounts.IndexOf(toAccount)] = toAccount with { Balance = toAccount.Balance + req.Amount };
+
+    return Results.Ok(new { message = "Transfer successful.", amount = req.Amount });
+}).RequireAuthorization();
+
 app.Run();
