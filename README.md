@@ -39,3 +39,5 @@ Login with either test account (password is `password` for both):
 
 - `jane.doe@email.com`
 - `john.smith@email.com`
+
+API reference UI available at http://localhost:5296/scalar/v1
