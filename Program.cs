@@ -51,4 +51,34 @@ app.MapPost("/auth/login", (LoginRequest req) =>
     return Results.Ok(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), memberId));
 });
 
+// GET /api/v1/members/{id}
+app.MapGet("/api/v1/members/{id}", (string id, ClaimsPrincipal user) =>
+{
+    var memberId = user.FindFirst("memberId")?.Value;
+    if (memberId != id) return Results.Forbid();
+
+    var member = SeedData.Members.FirstOrDefault(m => m.Id == id);
+    return member is null ? Results.NotFound() : Results.Ok(member);
+}).RequireAuthorization();
+
+// GET /api/v1/members/{id}/accounts
+app.MapGet("/api/v1/members/{id}/accounts", (string id, ClaimsPrincipal user) =>
+{
+    var memberId = user.FindFirst("memberId")?.Value;
+    if (memberId != id) return Results.Forbid();
+
+    var accounts = SeedData.Accounts.Where(a => a.MemberId == id).ToList();
+    return Results.Ok(accounts);
+}).RequireAuthorization();
+
+// GET /api/v1/members/{id}/accounts/{accountId}
+app.MapGet("/api/v1/members/{id}/accounts/{accountId}", (string id, string accountId, ClaimsPrincipal user) =>
+{
+    var memberId = user.FindFirst("memberId")?.Value;
+    if (memberId != id) return Results.Forbid();
+
+    var account = SeedData.Accounts.FirstOrDefault(a => a.Id == accountId && a.MemberId == id);
+    return account is null ? Results.NotFound() : Results.Ok(account);
+}).RequireAuthorization();
+
 app.Run();
